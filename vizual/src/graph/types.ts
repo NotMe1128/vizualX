@@ -92,7 +92,8 @@ export interface GraphState {
  */
 export type ExtensionMessage =
 	| { type: 'graph/update'; nodes: GraphNode[]; edges: GraphEdge[]; meta: any }
-	| { type: 'state/update'; filters: FilterConfig; colors: ColorRule[]; root: string; activeMode: boolean };
+	| { type: 'state/update'; filters: FilterConfig; colors: ColorRule[]; root: string; activeMode: boolean }
+	| { type: 'node/snippet'; requestId: string; nodeId: string; lineNumber?: number; lineTexts?: string[] };
 
 /**
  * Messages from webview to extension
@@ -101,6 +102,7 @@ export type WebviewMessage =
 	| { type: 'node/expand'; nodeId: string }
 	| { type: 'node/collapse'; nodeId: string }
 	| { type: 'node/open'; nodeId: string; ctrlKey: boolean }
+	| { type: 'node/snippet'; requestId: string; nodeId: string }
 	| { type: 'filters/set'; filters: FilterConfig }
 	| { type: 'colors/set'; colors: ColorRule[] }
 	| { type: 'root/pick' }

@@ -97,6 +97,39 @@ export class GraphController {
 	}
 
 	/**
+	 * Resolve a short code snippet (first 4 lines) for a node (if it points to source)
+	 */
+	async getNodeSnippet(nodeId: string): Promise<{ lineNumber: number; lineTexts: string[] } | undefined> {
+		const node = this.model.getNode(nodeId);
+		if (!node || !node.uri || !node.range) {
+			return undefined;
+		}
+
+		try {
+			const uri = vscode.Uri.parse(node.uri);
+			const document = await vscode.workspace.openTextDocument(uri);
+			const lineIndex = node.range.start.line;
+			if (lineIndex < 0 || lineIndex >= document.lineCount) {
+				return undefined;
+			}
+
+			const endIndex = Math.min(lineIndex + 4, document.lineCount);
+			const lineTexts: string[] = [];
+			for (let i = lineIndex; i < endIndex; i++) {
+				const rawLine = document.lineAt(i).text;
+				lineTexts.push(rawLine.length > 0 ? rawLine : '<empty line>');
+			}
+
+			return {
+				lineNumber: lineIndex + 1,
+				lineTexts
+			};
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
 	 * Change the root path
 	 */
 	async setRootPath(path: string): Promise<void> {

@@ -105,6 +105,19 @@ export class GraphPanel {
 				await this.controller.openNode(message.nodeId, message.ctrlKey);
 				break;
 
+			case 'node/snippet': {
+				const snippet = await this.controller.getNodeSnippet(message.nodeId);
+				const snippetMessage: ExtensionMessage = {
+					type: 'node/snippet',
+					requestId: message.requestId,
+					nodeId: message.nodeId,
+					lineNumber: snippet?.lineNumber,
+					lineTexts: snippet?.lineTexts
+				};
+				this.panel.webview.postMessage(snippetMessage);
+				break;
+			}
+
 			case 'filters/set':
 				this.controller.setFilters(message.filters);
 				break;
@@ -220,6 +233,14 @@ export class GraphPanel {
 					<input type="checkbox" id="debug-mode">
 					<span>Active Debug Highlight</span>
 				</label>
+				<label class="inline-row">Depth
+					<input type="number" id="animate-depth" min="1" max="12" value="2">
+				</label>
+				<label>Pop Speed
+					<input type="range" id="animate-speed" min="0.5" max="2" step="0.1" value="1">
+					<span class="value" id="animate-speed-value">1.0x</span>
+				</label>
+				<button id="animate-graph">Animate</button>
 			</div>
 
 			<div class="panel-section">
@@ -266,6 +287,7 @@ export class GraphPanel {
 	</section>
 
 	<div id="graph-container"></div>
+	<div id="animation-status" aria-live="polite"></div>
 
 	<script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
 	<script nonce="${nonce}" src="${scriptUri}"></script>

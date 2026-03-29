@@ -3,27 +3,37 @@
 ![Logo](../media/Vizual.png)
 
 ![Demo](../media/demo.gif)
-Download: [vizual-0.1.5(2).vsix](../Releases/vizual-0.1.5(2).vsix) 
+Download: [vizual-0.2.0.vsix](../Releases/vizual-0.2.0.vsix)
 
 An interactive VS Code extension that visualizes your project structure as a node graph, showing folders, files, and code symbols (classes, functions, methods, etc.).
 
-![Release](https://img.shields.io/badge/Release-v0.1.5(2)-blue)
+![Release](https://img.shields.io/badge/Release-v0.2.0-blue)
 
 ## Features
 
 - **Interactive Node Graph**: Visualize your project structure with an expandable, hierarchical graph
-- **Multi-Level Exploration**: 
+- **Multi-Level Exploration**:
   - Expand folders to see files
   - Expand files to see symbols (classes, functions, methods, variables, etc.)
-- **Smart Navigation**: 
+- **Smart Navigation**:
   - Click nodes to expand them
   - Ctrl+Click to open files/symbols in the editor
 - **Filtering**: Configure include/exclude patterns, max depth, and node limits
 - **Color Coding**: Customize colors by node type (folder, file, class, function, etc.)
-- **Debug Integration**: 
+- **Debug Integration**:
   - Highlights files with breakpoints
   - Shows currently active file
   - Active Mode to dim non-active nodes
+- **Physics Quick Toggle**:
+  - Press **P** to pause/resume physics simulation
+  - Graph interaction remains enabled while paused
+- **Animation Mode**:
+  - Animate expansion from root with **Depth** and **Pop Speed** controls
+  - Children pop out sequentially from their parent node for clearer flow
+  - Press **ESC** to cancel animation and restore previous expanded state
+- **Hover Code Snippets**:
+  - Hover a code-backed symbol node to view a 4-line snippet
+  - Snippet includes line numbers for quick source context
 - **Powered by vis-network**: Fast and responsive graph rendering
 
 ## Usage
@@ -39,6 +49,9 @@ An interactive VS Code extension that visualizes your project structure as a nod
 
 - **Change Root**: Select a different root folder for the graph
 - **Active Mode**: Toggle to highlight only active files and files with breakpoints
+- **P Key**: Pause/resume physics simulation without disabling interaction
+- **Depth + Pop Speed + Animate**: Run staged root animation from Settings
+- **ESC while animating**: Cancel and restore pre-animation graph state
 - **Filters**: Configure include/exclude patterns and limits
   - Include patterns (glob)
   - Exclude patterns (glob) - defaults exclude node_modules, .git, dist, etc.
@@ -46,10 +59,23 @@ An interactive VS Code extension that visualizes your project structure as a nod
   - Max nodes (safety limit)
 - **Colors**: Customize node colors by type
 
+## Animation Mode
+
+1. Open **Settings**.
+2. Set **Depth** (how deep expansion should go).
+3. Set **Pop Speed** (`0.5x` to `2.0x`) to control animation pacing.
+4. Click **Animate**.
+5. Press **ESC** any time to cancel and restore the graph to its pre-animation state.
+
+Notes:
+
+- Animation collapses back to root before running for consistent playback.
+- Pop Speed affects animation timing only (not normal expansion behavior).
+
 ## Graph Interactions
 
 - **Single Click**: Expand a folder or file node
-- **Ctrl+Click**: 
+- **Ctrl+Click**:
   - Folder: Reveal in Explorer
   - File: Open in editor
   - Symbol: Open file and jump to symbol location
@@ -66,6 +92,7 @@ An interactive VS Code extension that visualizes your project structure as a nod
 ## Default Excludes
 
 By default, these patterns are excluded:
+
 - `**/node_modules/**`
 - `**/.git/**`
 - `**/dist/**`
@@ -98,11 +125,37 @@ To work on this extension:
 
 ## Release Notes
 
+### 0.2.0 (2026-03-30)
+
+**New Features**
+
+- Added Animate Mode with **Depth** and **Pop Speed** controls.
+- Added sequential child pop animation from parent nodes.
+- Added **ESC cancel** with full pre-animation state restore.
+
+**Improvements**
+
+- Removed reset-heavy update path for much smoother default expansions.
+- Improved settings panel visuals and fixed close button/textarea layout issues.
+
+### 0.1.6 (2026-03-30)
+
+**New Features**
+
+- Press **P** to pause/resume graph physics while keeping node interaction available.
+- Hover popups now show the first 4 lines of code (with line numbers) for source-backed child/symbol nodes.
+
+**Improvements**
+
+- Reduced jitter by avoiding forced hover refresh on nodes with no children.
+- Removed keyboard focus border artifacts in graph interaction.
+
 ### 0.1.0 (2025-12-14)
 
 First public release of Vizual, an interactive project graph visualizer for VS Code.
 
 **New Features**
+
 - Interactive graph: expand folders → files → symbols (classes, functions, methods, variables)
 - Smart navigation: click to expand; Ctrl+Click to open files or jump to symbols
 - Physics controls: adjustable center force, link force, and link length
@@ -112,11 +165,13 @@ First public release of Vizual, an interactive project graph visualizer for VS C
 - Root pinning: keeps the root node anchored to prevent graph drift
 
 **Performance**
+
 - Stabilization for faster layout
 - Tuned physics (damping 0.65, minVelocity 0.05) for smoother ease-out
 - Reduced central gravity intensity to avoid over-clustering
 
 **Improvements**
+
 - Toggle expand/collapse on node click
 - Distinct shapes for folders, files, classes, functions, methods, variables, interfaces, enums
 - Live breakpoint and active file tracking

@@ -2,43 +2,85 @@
 
 All notable changes to the "vizual" extension will be documented in this file.
 
+## [0.2.0] - 2026-03-30
+
+### New Features
+
+- Added **Animate Mode** controls in Settings:
+  - **Depth** input to control expansion depth.
+  - **Pop Speed** slider to control animation speed only.
+- Added staged expansion animation for project exploration:
+  - Children pop from parent position in sequence.
+  - Supports folders and code files (symbol children such as methods, functions, attributes).
+- Added **ESC cancel** during animation:
+  - Shows bottom-left `Cancelling...` status.
+  - Restores pre-animation expanded state and camera view.
+
+### Improvements
+
+- Reworked graph updates to avoid full reset on expansion (reduced jitter significantly).
+- Improved non-animated node expansion to preserve current positions.
+- Updated settings panel visuals with cleaner modern styling and fixed layout issues.
+- Fixed settings close button sizing and filter textarea overflow behavior.
+
+## [0.1.6] - 2026-03-30
+
+### New Features
+
+- Added keyboard shortcut **P** to pause/resume graph physics simulation while preserving graph interaction (drag, zoom, click).
+- Hover popups now include a **4-line code snippet** with line numbers for source-backed symbol nodes.
+
+### Improvements
+
+- Reduced hover jitter by skipping forced color refresh on nodes with no children.
+- Removed keyboard focus outline artifacts (yellow border) in webview interactions.
+
 ## [0.1.5] - 2025-12-17
 
 ### Improvements
+
 - **Hover Info Popup**: Fixed popup positioning to appear next to the hovered node on the canvas instead of the center of the screen
 
 ## [0.1.4] - 2025-12-17
 
 ### Overview
+
 Add hover information popup for nodes displaying code metrics and diagnostics.
 
 ### New Features
+
 - **Hover Info Popup**: Hover over any node for ~500ms to see a popup with code information including variable count, method count, warnings, and errors
 - Popup is non-intrusive and disappears when you move away or interact with nodes
 
 ### Maintenance
+
 - Bumped extension version to 0.1.4
 
 ## [0.1.3] - 2025-12-15
 
 ### Overview
+
 Add a toggle to control active debug highlighting so paused call stack and symbol colors can be turned off when you want a cleaner view. Additionally added QOL aesthetic fixes.
 
 ### New Features
+
 - Added **Active Debug Highlight** toggle in the webview settings (General) to enable/disable paused call stack and symbol highlighting. Additionally shows the latest order of the call stack.
 - Debug highlight colors now respect the toggle state when rendering the graph.
 - When hovered, nodes now highlight themselves and child nodes.
 - Add line thickness adjustment slider
 
 ### Maintenance
+
 - Bumped extension version to 0.1.3 and refreshed release assets.
 
 ## [0.1.0] - 2025-12-14
 
 ### Overview
+
 First public release of Vizual, an interactive project graph visualizer for VS Code.
 
 ### New Features
+
 - Interactive graph: expand folders → files → symbols (classes, functions, methods, variables)
 - Smart navigation: click to expand; Ctrl+Click to open files or jump to symbols
 - Physics controls: adjustable center force, link force, and link length
@@ -48,19 +90,23 @@ First public release of Vizual, an interactive project graph visualizer for VS C
 - Root pinning: keeps the root node anchored to prevent graph drift
 
 ### Performance
+
 - Stabilization for faster layout
 - Tuned physics (damping 0.65, minVelocity 0.05) for smoother ease-out
 - Reduced central gravity intensity to avoid over-clustering
 
 ### Improvements
+
 - Toggle expand/collapse on node click
 - Distinct shapes for folders, files, classes, functions, methods, variables, interfaces, enums
 - Live breakpoint and active file tracking
 
 ### Requirements
+
 - VS Code 1.107.0+
 - Node.js 22.x+
 
 ### Known Issues
+
 - Large projects may hit the node cap; increase limit in Filters
 - Symbol coverage depends on installed language extensions
