@@ -39,6 +39,9 @@ export interface GraphNode {
 	isLeaf: boolean;
 	hasBreakpoint?: boolean;
 	isActive?: boolean;
+	diagnosticsErrors?: number;
+	diagnosticsWarnings?: number;
+	isCodeFile?: boolean;
 	// Active debug flags
 	isDebugActive?: boolean; // file is in current call stack
 	isDebugSymbolActive?: boolean; // symbol contains current paused location

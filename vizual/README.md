@@ -3,11 +3,11 @@
 ![Logo](../media/Vizual.png)
 
 ![Demo](../media/demo.gif)
-Download: [vizual-0.2.0.vsix](../Releases/vizual-0.2.0.vsix)
+Download: [vizual-0.2.1.vsix](../Releases/vizual-0.2.1.vsix)
 
 An interactive VS Code extension that visualizes your project structure as a node graph, showing folders, files, and code symbols (classes, functions, methods, etc.).
 
-![Release](https://img.shields.io/badge/Release-v0.2.0-blue)
+![Release](https://img.shields.io/badge/Release-v0.2.1-blue)
 
 ## Features
 
@@ -31,6 +31,10 @@ An interactive VS Code extension that visualizes your project structure as a nod
   - Animate expansion from root with **Depth** and **Pop Speed** controls
   - Children pop out sequentially from their parent node for clearer flow
   - Press **ESC** to cancel animation and restore previous expanded state
+- **Error/Warning Highlighting**:
+  - Toggle in Settings to override all colors with diagnostics
+  - Code-backed nodes are **red** (error), **yellow** (warning-only), or **green** (clean)
+  - Non-code nodes remain **gray**
 - **Hover Code Snippets**:
   - Hover a code-backed symbol node to view a 4-line snippet
   - Snippet includes line numbers for quick source context
@@ -52,12 +56,22 @@ An interactive VS Code extension that visualizes your project structure as a nod
 - **P Key**: Pause/resume physics simulation without disabling interaction
 - **Depth + Pop Speed + Animate**: Run staged root animation from Settings
 - **ESC while animating**: Cancel and restore pre-animation graph state
+- **Error/Warning Highlighting toggle**: Enable full diagnostic coloring override
 - **Filters**: Configure include/exclude patterns and limits
   - Include patterns (glob)
   - Exclude patterns (glob) - defaults exclude node_modules, .git, dist, etc.
   - Max depth
   - Max nodes (safety limit)
 - **Colors**: Customize node colors by type
+
+When Error/Warning Highlighting is enabled:
+
+- **Red**: one or more errors exist for that node range
+- **Yellow**: one or more warnings exist and no errors
+- **Green**: no warnings/errors
+- **Gray**: non-code nodes/files
+
+Diagnostic mode overrides debug, active mode, breakpoint, hover, and custom color rules until disabled.
 
 ## Animation Mode
 
@@ -124,6 +138,20 @@ To work on this extension:
 4. Run the command `Vizual: Open Project Graph`
 
 ## Release Notes
+
+### 0.2.1 (2026-03-30)
+
+**New Features**
+
+- Added **Error/Warning Highlighting** settings section with toggle.
+- Added node coloring by diagnostics for code-backed nodes:
+  - Red = error, Yellow = warning-only, Green = clean.
+- Added symbol child diagnostic coloring using each child's code range.
+
+**Improvements**
+
+- Diagnostic mode now fully overrides all other color modes while enabled.
+- Non-code nodes remain gray for clearer diagnostic focus.
 
 ### 0.2.0 (2026-03-30)
 

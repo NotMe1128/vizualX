@@ -160,6 +160,13 @@ input[type="checkbox"] {
 	margin-bottom: 10px;
 }
 
+.section-note {
+	font-size: 11px;
+	line-height: 1.35;
+	color: var(--vscode-descriptionForeground);
+	margin-top: 2px;
+}
+
 .panel label {
 	display: flex;
 	flex-direction: column;

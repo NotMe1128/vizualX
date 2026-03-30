@@ -1,13 +1,25 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { GraphController } from '../graph/controller';
-import { ExtensionMessage, WebviewMessage } from '../graph/types';
+import { ExtensionMessage, GraphNode, WebviewMessage } from '../graph/types';
 
 /**
  * Webview panel manager
  */
 export class GraphPanel {
 	public static currentPanel: GraphPanel | undefined;
+	private static readonly codeFileExtensions = new Set<string>([
+		'.ts', '.tsx', '.mts', '.cts',
+		'.js', '.jsx', '.mjs', '.cjs',
+		'.py', '.java', '.cs',
+		'.c', '.cc', '.cpp', '.cxx',
+		'.h', '.hh', '.hpp', '.hxx',
+		'.go', '.rs', '.php', '.rb', '.swift',
+		'.kt', '.kts', '.scala', '.lua', '.dart',
+		'.json', '.jsonc', '.xml', '.yml', '.yaml',
+		'.html', '.htm', '.css', '.scss', '.sass', '.less',
+		'.vue', '.svelte', '.sql', '.r'
+	]);
 	private readonly panel: vscode.WebviewPanel;
 	private readonly extensionUri: vscode.Uri;
 	private readonly controller: GraphController;
@@ -39,6 +51,23 @@ export class GraphPanel {
 		this.disposables.push(
 			this.controller.onUpdate(() => {
 				this.sendGraphUpdate();
+			})
+		);
+
+		this.disposables.push(
+			vscode.languages.onDidChangeDiagnostics(event => {
+				if (event.uris.length === 0) {
+					return;
+				}
+
+				const changedUris = new Set(event.uris.map(uri => uri.toString()));
+				const hasImpactedNode = this.controller.getModel().getNodes().some(node =>
+					!!node.uri && changedUris.has(node.uri)
+				);
+
+				if (hasImpactedNode) {
+					this.sendGraphUpdate();
+				}
 			})
 		);
 
@@ -158,13 +187,99 @@ export class GraphPanel {
 	 */
 	private sendGraphUpdate(): void {
 		const model = this.controller.getModel();
+		const diagnosticsCache = new Map<string, { errors: number; warnings: number; isCodeFile: boolean }>();
+		const diagnosticsByUri = new Map<string, readonly vscode.Diagnostic[]>();
+		const nodes = model.getNodes().map(node => {
+			const diagnosticInfo = this.collectDiagnosticInfo(node, diagnosticsCache, diagnosticsByUri);
+			return {
+				...node,
+				diagnosticsErrors: diagnosticInfo.errors,
+				diagnosticsWarnings: diagnosticInfo.warnings,
+				isCodeFile: diagnosticInfo.isCodeFile
+			};
+		});
+
 		const message: ExtensionMessage = {
 			type: 'graph/update',
-			nodes: model.getNodes(),
+			nodes,
 			edges: model.getEdges(),
 			meta: {}
 		};
 		this.panel.webview.postMessage(message);
+	}
+
+	private collectDiagnosticInfo(
+		node: GraphNode,
+		cache: Map<string, { errors: number; warnings: number; isCodeFile: boolean }>,
+		diagnosticsByUri: Map<string, readonly vscode.Diagnostic[]>
+	): { errors: number; warnings: number; isCodeFile: boolean } {
+		if (!node.uri) {
+			return { errors: 0, warnings: 0, isCodeFile: false };
+		}
+
+		let uri: vscode.Uri;
+		try {
+			uri = vscode.Uri.parse(node.uri);
+		} catch {
+			const fallback = { errors: 0, warnings: 0, isCodeFile: false };
+			cache.set(`${node.uri}::invalid`, fallback);
+			return fallback;
+		}
+
+		const isCodeFile = this.isCodeFileUri(uri);
+		const cacheKey = this.getDiagnosticCacheKey(node);
+		const cached = cache.get(cacheKey);
+		if (cached) {
+			return cached;
+		}
+
+		let errors = 0;
+		let warnings = 0;
+
+		if (isCodeFile) {
+			const diagnostics = diagnosticsByUri.get(node.uri) ?? vscode.languages.getDiagnostics(uri);
+			diagnosticsByUri.set(node.uri, diagnostics);
+
+			for (const diagnostic of diagnostics) {
+				if (node.range && !this.rangesOverlap(node.range, diagnostic.range)) {
+					continue;
+				}
+
+				if (diagnostic.severity === vscode.DiagnosticSeverity.Error) {
+					errors += 1;
+				} else if (diagnostic.severity === vscode.DiagnosticSeverity.Warning) {
+					warnings += 1;
+				}
+			}
+		}
+
+		const info = { errors, warnings, isCodeFile };
+		cache.set(cacheKey, info);
+		return info;
+	}
+
+	private getDiagnosticCacheKey(node: GraphNode): string {
+		if (!node.uri) {
+			return '__no-uri__';
+		}
+
+		if (!node.range) {
+			return `${node.uri}::file`;
+		}
+
+		const { start, end } = node.range;
+		return `${node.uri}::${start.line}:${start.character}-${end.line}:${end.character}`;
+	}
+
+	private rangesOverlap(a: vscode.Range, b: vscode.Range): boolean {
+		const startsBeforeOtherEnds = a.start.isBeforeOrEqual(b.end);
+		const endsAfterOtherStarts = a.end.isAfterOrEqual(b.start);
+		return startsBeforeOtherEnds && endsAfterOtherStarts;
+	}
+
+	private isCodeFileUri(uri: vscode.Uri): boolean {
+		const extension = path.extname(uri.fsPath).toLowerCase();
+		return GraphPanel.codeFileExtensions.has(extension);
 	}
 
 	/**
@@ -241,6 +356,15 @@ export class GraphPanel {
 					<span class="value" id="animate-speed-value">1.0x</span>
 				</label>
 				<button id="animate-graph">Animate</button>
+			</div>
+
+			<div class="panel-section">
+				<div class="section-title">Error/Warning Highlighting</div>
+				<label class="inline-row">
+					<input type="checkbox" id="error-warning-highlighting">
+					<span>Enable Diagnostic Coloring</span>
+				</label>
+				<div class="section-note">Overrides all node colors. Code files and their symbols: error red, warning yellow, clean green. Non-code nodes remain grey.</div>
 			</div>
 
 			<div class="panel-section">

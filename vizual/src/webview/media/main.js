@@ -6,6 +6,52 @@
     linkLength: 180,
     lineThickness: 2,
   };
+  const CODE_FILE_EXTENSIONS = new Set([
+    ".ts",
+    ".tsx",
+    ".mts",
+    ".cts",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".py",
+    ".java",
+    ".cs",
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".h",
+    ".hh",
+    ".hpp",
+    ".hxx",
+    ".go",
+    ".rs",
+    ".php",
+    ".rb",
+    ".swift",
+    ".kt",
+    ".kts",
+    ".scala",
+    ".lua",
+    ".dart",
+    ".json",
+    ".jsonc",
+    ".xml",
+    ".yml",
+    ".yaml",
+    ".html",
+    ".htm",
+    ".css",
+    ".scss",
+    ".sass",
+    ".less",
+    ".vue",
+    ".svelte",
+    ".sql",
+    ".r",
+  ]);
 
   const savedState = vscode.getState?.();
   let network = null;
@@ -31,11 +77,16 @@
     root: "",
     activeMode: false,
     debugMode: false,
+    errorWarningHighlighting: false,
     physicsPaused: false,
     animateDepth: 2,
     animateSpeed: 1,
     physics: { ...defaultPhysics },
   };
+
+  if (typeof currentState.errorWarningHighlighting !== "boolean") {
+    currentState.errorWarningHighlighting = false;
+  }
 
   // Initialize UI
   document.addEventListener("DOMContentLoaded", () => {
@@ -79,6 +130,16 @@
       updateNodeColors();
       repaintNetwork();
     });
+
+    // Error/warning highlighting toggle (local only)
+    document
+      .getElementById("error-warning-highlighting")
+      ?.addEventListener("change", (e) => {
+        currentState.errorWarningHighlighting = e.target.checked;
+        persistState();
+        updateNodeColors();
+        repaintNetwork();
+      });
 
     // Apply filters
     document.getElementById("apply-filters")?.addEventListener("click", () => {
@@ -257,49 +318,7 @@
 
     // Transform nodes for vis-network
     const visNodes = nodes.map((node) => {
-      let color;
-
-      if (currentState.debugMode) {
-        // In debug mode: gradient from yellow (top of stack) to green (deeper frames)
-        color = "#666666";
-        if (node.isDebugActive || node.isDebugSymbolActive) {
-          if (node.debugStackDepth !== undefined) {
-            // Gradient: depth 0 (top) = yellow, depth 1-2 = yellow-green blend, depth 3+ = green
-            color = getDebugStackColor(node.debugStackDepth);
-          } else {
-            // File in stack but no specific depth info
-            color = "#00ff00";
-          }
-        }
-      } else {
-        color = getColorForNode(node);
-
-        // Apply hover highlight: when hovering, dim all except hovered node and its children
-        if (hoveredNodeId) {
-          const isHovered = node.id === hoveredNodeId;
-          const isChild = hoveredChildren.has(node.id);
-          if (!isHovered && !isChild) {
-            color = "#666666";
-          }
-        } else {
-          // Apply active mode dimming when not hovering
-          if (currentState.activeMode) {
-            if (!node.isActive && !node.hasBreakpoint) {
-              color = "#666666";
-            }
-          }
-        }
-
-        // Highlight breakpoints
-        if (node.hasBreakpoint) {
-          color = "#ff0000";
-        }
-
-        // Highlight active
-        if (node.isActive) {
-          color = "#00ff00";
-        }
-      }
+      const color = getDisplayColorForNode(node);
 
       const visNode = {
         id: node.id,
@@ -543,6 +562,14 @@
       debugModeEl.checked = currentState.debugMode;
     }
 
+    const errorWarningHighlightingEl = document.getElementById(
+      "error-warning-highlighting",
+    );
+    if (errorWarningHighlightingEl) {
+      errorWarningHighlightingEl.checked =
+        !!currentState.errorWarningHighlighting;
+    }
+
     const animateDepthEl = document.getElementById("animate-depth");
     if (animateDepthEl) {
       animateDepthEl.value = String(getAnimateDepthValue());
@@ -633,54 +660,95 @@
   function updateNodeColors() {
     if (!network) return;
     const updates = currentNodes.map((node) => {
-      let color;
-
-      if (currentState.debugMode) {
-        // In debug mode: gradient from yellow (top of stack) to green (deeper frames)
-        color = "#666666";
-        if (node.isDebugActive || node.isDebugSymbolActive) {
-          if (node.debugStackDepth !== undefined) {
-            // Gradient: depth 0 (top) = yellow, depth 1-2 = yellow-green blend, depth 3+ = green
-            color = getDebugStackColor(node.debugStackDepth);
-          } else {
-            // File in stack but no specific depth info
-            color = "#00ff00";
-          }
-        }
-      } else {
-        color = getColorForNode(node);
-
-        // Apply hover highlight: when hovering, dim all except hovered node and its children
-        if (hoveredNodeId) {
-          const isHovered = node.id === hoveredNodeId;
-          const isChild = hoveredChildren.has(node.id);
-          if (!isHovered && !isChild) {
-            color = "#666666";
-          }
-        } else {
-          // Apply active mode dimming when not hovering
-          if (currentState.activeMode) {
-            if (!node.isActive && !node.hasBreakpoint) {
-              color = "#666666";
-            }
-          }
-        }
-
-        // Breakpoint color always wins
-        if (node.hasBreakpoint) {
-          color = "#ff0000";
-        }
-
-        // Active file color always wins
-        if (node.isActive) {
-          color = "#00ff00";
-        }
-      }
-
-      return { id: node.id, color: color };
+      return { id: node.id, color: getDisplayColorForNode(node) };
     });
 
     network.body.data.nodes.update(updates);
+  }
+
+  function getDisplayColorForNode(node) {
+    if (currentState.errorWarningHighlighting) {
+      return getDiagnosticHighlightColor(node);
+    }
+
+    let color;
+
+    if (currentState.debugMode) {
+      color = "#666666";
+      if (node.isDebugActive || node.isDebugSymbolActive) {
+        if (node.debugStackDepth !== undefined) {
+          color = getDebugStackColor(node.debugStackDepth);
+        } else {
+          color = "#00ff00";
+        }
+      }
+      return color;
+    }
+
+    color = getColorForNode(node);
+
+    if (hoveredNodeId) {
+      const isHovered = node.id === hoveredNodeId;
+      const isChild = hoveredChildren.has(node.id);
+      if (!isHovered && !isChild) {
+        color = "#666666";
+      }
+    } else if (currentState.activeMode) {
+      if (!node.isActive && !node.hasBreakpoint) {
+        color = "#666666";
+      }
+    }
+
+    if (node.hasBreakpoint) {
+      color = "#ff0000";
+    }
+
+    if (node.isActive) {
+      color = "#00ff00";
+    }
+
+    return color;
+  }
+
+  function getDiagnosticHighlightColor(node) {
+    if (!isCodeFileNode(node)) {
+      return "#666666";
+    }
+
+    const errors = Number.isFinite(node.diagnosticsErrors)
+      ? Math.max(0, node.diagnosticsErrors)
+      : 0;
+    const warnings = Number.isFinite(node.diagnosticsWarnings)
+      ? Math.max(0, node.diagnosticsWarnings)
+      : 0;
+
+    if (errors > 0) {
+      return "#ff0000";
+    }
+
+    if (warnings > 0) {
+      return "#ffff00";
+    }
+
+    return "#00ff00";
+  }
+
+  function isCodeFileNode(node) {
+    if (typeof node.isCodeFile === "boolean") {
+      return node.isCodeFile;
+    }
+
+    if (!node.uri && !node.label) {
+      return false;
+    }
+
+    const source = String(node.uri || node.label).toLowerCase();
+    const extensionMatch = source.match(/\.[a-z0-9]+$/);
+    if (!extensionMatch) {
+      return false;
+    }
+
+    return CODE_FILE_EXTENSIONS.has(extensionMatch[0]);
   }
 
   /**
@@ -1351,13 +1419,12 @@
     ).length;
     const totalChildren = children.length;
 
-    // Get diagnostics for this node's URI (if it has one)
-    let warnings = 0;
-    let errors = 0;
-    if (node.uri) {
-      // We could get diagnostics from VS Code, but for now use a placeholder
-      // In a real implementation, you'd query vscode.languages.getDiagnostics(uri)
-    }
+    const warnings = Number.isFinite(node.diagnosticsWarnings)
+      ? Math.max(0, node.diagnosticsWarnings)
+      : 0;
+    const errors = Number.isFinite(node.diagnosticsErrors)
+      ? Math.max(0, node.diagnosticsErrors)
+      : 0;
 
     // Create popup element
     const popup = document.createElement("div");
@@ -1386,6 +1453,8 @@
       ...(classCount > 0 ? [`Classes: ${classCount}`] : []),
       ...(interfaceCount > 0 ? [`Interfaces: ${interfaceCount}`] : []),
       ...(variableCount > 0 ? [`Variables: ${variableCount}`] : []),
+      ...(errors > 0 ? [`Errors: ${errors}`] : []),
+      ...(warnings > 0 ? [`Warnings: ${warnings}`] : []),
     ];
 
     popup.innerHTML = infoLines

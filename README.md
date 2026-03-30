@@ -5,11 +5,11 @@
 ![Logo](./media/Vizual.png)
 
 ![Demo](./media/demo.gif)
-Download: [vizual-0.2.0.vsix](./Releases/vizual-0.2.0.vsix)
+Download: [vizual-0.2.1.vsix](./Releases/vizual-0.2.1.vsix)
 
 An interactive VS Code extension that visualizes your project structure as a node graph, showing folders, files, and code symbols (classes, functions, methods, etc.).
 
-![Release](https://img.shields.io/badge/Release-v0.2.0-blue)
+![Release](https://img.shields.io/badge/Release-v0.2.1-blue)
 
 ## Features
 
@@ -27,6 +27,7 @@ An interactive VS Code extension that visualizes your project structure as a nod
 - **Physics Pause Shortcut**: Press **P** to pause/resume simulation while still interacting with the graph
 - **Animate Mode**: Expand from root using **Depth** and **Pop Speed** controls
 - **ESC Cancel**: Cancel animation and restore the pre-animation graph state/camera
+- **Error/Warning Highlighting**: Toggle diagnostic mode to color code-backed nodes by severity (red error, yellow warning, green clean), while non-code nodes stay gray
 
 ### Rich Hover Context
 
@@ -104,6 +105,20 @@ Enable **Active Mode** to focus on your current work:
 - Your active file is highlighted in **green**
 - Files with breakpoints are highlighted in **red**
 - All other nodes are dimmed to **gray**
+
+### Error/Warning Highlighting
+
+Enable **Error/Warning Highlighting** in **Settings** to temporarily override node colors using diagnostics:
+
+- **Red**: Node has at least one error
+- **Yellow**: Node has warning(s) and no errors
+- **Green**: Node has no warnings/errors
+- **Gray**: Non-code nodes/files
+
+Notes:
+
+- This mode overrides debug, active, breakpoint, hover, and custom color rules while enabled.
+- Symbol children are colored from diagnostics in their own code range, so child severity is shown directly.
 
 ## Configuration
 

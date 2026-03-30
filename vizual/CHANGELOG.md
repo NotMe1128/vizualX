@@ -2,6 +2,22 @@
 
 All notable changes to the "vizual" extension will be documented in this file.
 
+## [0.2.1] - 2026-03-30
+
+### New Features
+
+- Added a new **Error/Warning Highlighting** section in Settings with an enable/disable toggle.
+- Added diagnostic color mode for code-backed nodes:
+  - **Red** when one or more errors are present.
+  - **Yellow** when warnings exist and errors do not.
+  - **Green** when no warnings/errors are present.
+- Added symbol-level diagnostic coloring by matching diagnostics to child symbol ranges.
+
+### Improvements
+
+- Diagnostic highlighting now overrides all other color systems while enabled (debug, active mode, breakpoints, hover dimming, and custom color rules).
+- Non-code nodes remain neutral gray in diagnostic mode for clearer focus.
+
 ## [0.2.0] - 2026-03-30
 
 ### New Features
