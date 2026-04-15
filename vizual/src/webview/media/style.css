@@ -275,3 +275,39 @@ input[type="checkbox"] {
 	padding: 4px 8px;
 	font-size: 12px;
 }
+
+.kind-toggle-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 4px 8px;
+	margin-top: 8px;
+	margin-bottom: 10px;
+}
+
+.kind-toggle-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	padding: 5px 8px;
+	border-radius: 6px;
+	border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 60%, transparent 40%);
+	background: color-mix(in srgb, var(--vscode-sideBar-background) 80%, transparent 20%);
+	cursor: pointer;
+	transition: background 100ms ease, border-color 100ms ease;
+	margin-bottom: 0;
+}
+
+.kind-toggle-item:hover {
+	background: color-mix(in srgb, var(--vscode-button-background) 20%, transparent 80%);
+	border-color: color-mix(in srgb, var(--vscode-button-background) 60%, transparent 40%);
+}
+
+.kind-toggle-item input[type="checkbox"] {
+	margin: 0;
+	flex-shrink: 0;
+}
+
+.kind-toggle-item span {
+	line-height: 1;
+}

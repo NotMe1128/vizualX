@@ -24,6 +24,8 @@ export class GraphPanel {
 	private readonly extensionUri: vscode.Uri;
 	private readonly controller: GraphController;
 	private disposables: vscode.Disposable[] = [];
+	/** Debounce timer — coalesces rapid model updates into one webview paint */
+	private graphUpdateTimer: ReturnType<typeof setTimeout> | undefined;
 
 	private constructor(
 		panel: vscode.WebviewPanel,
@@ -47,10 +49,10 @@ export class GraphPanel {
 			this.disposables
 		);
 
-		// Subscribe to model updates
+		// Subscribe to model updates — debounced so rapid batches only send once
 		this.disposables.push(
 			this.controller.onUpdate(() => {
-				this.sendGraphUpdate();
+				this.scheduleGraphUpdate();
 			})
 		);
 
@@ -149,6 +151,7 @@ export class GraphPanel {
 
 			case 'filters/set':
 				this.controller.setFilters(message.filters);
+				this.sendStateUpdate(); // echo accepted state back so webview stays in sync
 				break;
 
 			case 'colors/set':
@@ -180,6 +183,21 @@ export class GraphPanel {
 			await this.controller.setRootPath(result[0].fsPath);
 			this.sendStateUpdate();
 		}
+	}
+
+	/**
+	 * Debounced wrapper — coalesces any burst of model updates within 60 ms
+	 * into a single webview repaint. This is the safety net on top of the
+	 * batch-write optimisation in symbolProvider.
+	 */
+	private scheduleGraphUpdate(): void {
+		if (this.graphUpdateTimer !== undefined) {
+			clearTimeout(this.graphUpdateTimer);
+		}
+		this.graphUpdateTimer = setTimeout(() => {
+			this.graphUpdateTimer = undefined;
+			this.sendGraphUpdate();
+		}, 60);
 	}
 
 	/**
@@ -392,6 +410,24 @@ export class GraphPanel {
 			</div>
 
 			<div class="panel-section">
+				<div class="section-title">Symbol Visibility</div>
+				<div class="section-note">Uncheck kinds to hide them when expanding file nodes. Collapse &amp; re-expand a file to apply.</div>
+				<div class="kind-toggle-grid" id="kind-toggles">
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-class" checked><span>Class</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-function" checked><span>Function</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-method" checked><span>Method</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-variable" checked><span>Variable</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-property" checked><span>Property</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-constant" checked><span>Constant</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-interface" checked><span>Interface</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-enum" checked><span>Enum</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-namespace" checked><span>Namespace</span></label>
+					<label class="kind-toggle-item"><input type="checkbox" id="kind-constructor" checked><span>Constructor</span></label>
+				</div>
+				<button id="apply-kind-filter">Apply Visibility</button>
+			</div>
+
+			<div class="panel-section">
 				<div class="section-title">Filters</div>
 				<label>Include Patterns (one per line)</label>
 				<textarea id="include-patterns" rows="3"></textarea>
@@ -399,6 +435,7 @@ export class GraphPanel {
 				<textarea id="exclude-patterns" rows="4"></textarea>
 				<label class="inline-row">Max Depth <input type="number" id="max-depth" min="1" max="100"></label>
 				<label class="inline-row">Max Nodes <input type="number" id="max-nodes" min="100" max="10000"></label>
+				<label class="inline-row">Max Symbol Depth <input type="number" id="max-symbol-depth" min="1" max="20" title="How many levels deep to recurse into a file's symbols (1=top-level only)"></label>
 				<button id="apply-filters">Apply Filters</button>
 			</div>
 
@@ -424,6 +461,12 @@ export class GraphPanel {
 	 */
 	public dispose(): void {
 		GraphPanel.currentPanel = undefined;
+
+		// Cancel any pending debounced update to avoid post-disposal callbacks
+		if (this.graphUpdateTimer !== undefined) {
+			clearTimeout(this.graphUpdateTimer);
+			this.graphUpdateTimer = undefined;
+		}
 
 		this.panel.dispose();
 		this.controller.dispose();

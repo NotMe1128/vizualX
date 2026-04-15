@@ -26,7 +26,7 @@ export class SymbolProvider {
 			return;
 		}
 
-		// Check node limit
+		// Check node limit before even fetching symbols
 		if (this.model.isOverNodeLimit()) {
 			vscode.window.showWarningMessage(`Node limit (${this.model.getFilters().maxNodes}) reached. Increase limit in filters.`);
 			return;
@@ -48,11 +48,16 @@ export class SymbolProvider {
 				return;
 			}
 
-			// Process symbols recursively
-			this.processSymbols(fileUri, symbols, nodeId);
+			// Collect ALL nodes/edges into plain arrays first — zero model writes.
+			const nodesToAdd: GraphNode[] = [];
+			const edgesToAdd: Array<{ from: string; to: string }> = [];
 
-			// Mark node as expanded
-			this.model.setNodeExpanded(nodeId, true);
+			this.collectSymbols(fileUri, symbols, nodeId, '', 0, nodesToAdd, edgesToAdd);
+
+			// Mark the file node expanded silently (no extra notification),
+			// then flush the entire batch with a single notifyUpdate.
+			node.isExpanded = true;
+			this.model.addBatch(nodesToAdd, edgesToAdd);
 
 		} catch (error) {
 			console.error('Error expanding file symbols:', error);
@@ -63,42 +68,64 @@ export class SymbolProvider {
 	}
 
 	/**
-	 * Process symbols recursively
+	 * Recursively collect symbols into pre-allocated arrays.
+	 * No model mutations happen here — callers batch-commit the result.
 	 */
-	private processSymbols(
+	private collectSymbols(
 		fileUri: vscode.Uri,
 		symbols: vscode.DocumentSymbol[],
 		parentId: string,
-		symbolPath: string = ''
+		symbolPath: string,
+		depth: number,
+		nodesToAdd: GraphNode[],
+		edgesToAdd: Array<{ from: string; to: string }>
 	): void {
+		const filters = this.model.getFilters();
+		const maxSymbolDepth = filters.maxSymbolDepth ?? 5;
+
+		// Hard stop: depth exceeded
+		if (depth >= maxSymbolDepth) {
+			return;
+		}
+
 		for (const symbol of symbols) {
-			// Check node limit
-			if (this.model.isOverNodeLimit()) {
+			// Check limit against model size PLUS pending batch to stay accurate
+			if (this.model.getNodeCount() + nodesToAdd.length >= filters.maxNodes) {
 				break;
+			}
+
+			const mappedKind = this.mapSymbolKind(symbol.kind);
+
+			// Respect hidden kinds filter — skip node creation but still recurse
+			// into children so nested visible symbols are not silently dropped.
+			if (filters.hiddenKinds && filters.hiddenKinds.includes(mappedKind)) {
+				if (symbol.children && symbol.children.length > 0) {
+					this.collectSymbols(fileUri, symbol.children, parentId, symbolPath, depth, nodesToAdd, edgesToAdd);
+				}
+				continue;
 			}
 
 			const currentSymbolPath = symbolPath ? `${symbolPath}.${symbol.name}` : symbol.name;
 			const symbolId = this.createSymbolId(fileUri, currentSymbolPath, symbol.range);
 
-			const symbolNode: GraphNode = {
+			nodesToAdd.push({
 				id: symbolId,
 				label: symbol.name,
-				kind: this.mapSymbolKind(symbol.kind),
+				kind: mappedKind,
 				uri: fileUri.toString(),
 				range: symbol.range,
 				isExpanded: false,
 				isLeaf: !symbol.children || symbol.children.length === 0
-			};
+			});
+			edgesToAdd.push({ from: parentId, to: symbolId });
 
-			this.model.addNode(symbolNode);
-			this.model.addEdge(parentId, symbolId);
-
-			// Process children if any
+			// Recurse into children at the next depth level
 			if (symbol.children && symbol.children.length > 0) {
-				this.processSymbols(fileUri, symbol.children, symbolId, currentSymbolPath);
+				this.collectSymbols(fileUri, symbol.children, symbolId, currentSymbolPath, depth + 1, nodesToAdd, edgesToAdd);
 			}
 		}
 	}
+
 
 	/**
 	 * Create a stable symbol ID

@@ -8,7 +8,9 @@ export const DEFAULT_FILTERS: FilterConfig = {
 	includePatterns: ['**/*'],
 	excludePatterns: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/out/**', '**/*.map'],
 	maxDepth: 10,
-	maxNodes: 1000
+	maxNodes: 100000,
+	hiddenKinds: [],
+	maxSymbolDepth: 5
 };
 
 /**
@@ -84,6 +86,32 @@ export class GraphModel {
 	}
 
 	/**
+	 * Batch-add nodes and edges with a single update notification.
+	 * Use this instead of addNode/addEdge in hot paths (e.g. file symbol expansion)
+	 * to avoid firing hundreds of redundant graph repaints.
+	 */
+	addBatch(
+		nodes: GraphNode[],
+		edges: Array<{ from: string; to: string; kind?: EdgeKind }>
+	): void {
+		for (const node of nodes) {
+			this.state.nodes.set(node.id, node);
+		}
+		for (const { from, to, kind = EdgeKind.Contains } of edges) {
+			const id = `${from}->${to}`;
+			this.state.edges.set(id, { id, from, to, kind });
+		}
+		this.notifyUpdate();
+	}
+
+	/**
+	 * Current number of nodes in the graph
+	 */
+	getNodeCount(): number {
+		return this.state.nodes.size;
+	}
+
+	/**
 	 * Get all nodes
 	 */
 	getNodes(): GraphNode[] {
@@ -143,13 +171,17 @@ export class GraphModel {
 	}
 
 	/**
-	 * Mark a node as expanded
+	 * Mark a node as expanded.
+	 * Pass silent=true to mutate without emitting an update (use when a batch
+	 * notification will follow immediately).
 	 */
-	setNodeExpanded(nodeId: string, expanded: boolean): void {
+	setNodeExpanded(nodeId: string, expanded: boolean, silent = false): void {
 		const node = this.state.nodes.get(nodeId);
 		if (node) {
 			node.isExpanded = expanded;
-			this.notifyUpdate();
+			if (!silent) {
+				this.notifyUpdate();
+			}
 		}
 	}
 

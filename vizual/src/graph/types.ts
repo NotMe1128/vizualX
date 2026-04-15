@@ -67,6 +67,9 @@ export interface FilterConfig {
 	excludePatterns: string[];
 	maxDepth: number;
 	maxNodes: number;
+	hiddenKinds: NodeKind[];
+	/** Max nesting depth when expanding a file's symbols (1 = top-level only) */
+	maxSymbolDepth: number;
 }
 
 /**

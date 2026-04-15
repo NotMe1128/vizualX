@@ -82,11 +82,30 @@
     animateDepth: 2,
     animateSpeed: 1,
     physics: { ...defaultPhysics },
+    hiddenKinds: [],
   };
 
   if (typeof currentState.errorWarningHighlighting !== "boolean") {
     currentState.errorWarningHighlighting = false;
   }
+
+  if (!Array.isArray(currentState.hiddenKinds)) {
+    currentState.hiddenKinds = [];
+  }
+
+  // Maps checkbox IDs to NodeKind string values
+  const KIND_MAP = {
+    "kind-class": "class",
+    "kind-function": "function",
+    "kind-method": "method",
+    "kind-variable": "variable",
+    "kind-property": "property",
+    "kind-constant": "constant",
+    "kind-interface": "interface",
+    "kind-enum": "enum",
+    "kind-namespace": "namespace",
+    "kind-constructor": "constructor",
+  };
 
   // Initialize UI
   document.addEventListener("DOMContentLoaded", () => {
@@ -155,6 +174,8 @@
         parseInt(document.getElementById("max-depth").value) || 10;
       const maxNodes =
         parseInt(document.getElementById("max-nodes").value) || 1000;
+      const maxSymbolDepth =
+        parseInt(document.getElementById("max-symbol-depth").value) || 5;
 
       vscode.postMessage({
         type: "filters/set",
@@ -163,7 +184,39 @@
           excludePatterns,
           maxDepth,
           maxNodes,
+          maxSymbolDepth,
+          hiddenKinds: currentState.hiddenKinds || [],
         },
+      });
+    });
+
+    // Apply kind visibility filter
+    document.getElementById("apply-kind-filter")?.addEventListener("click", () => {
+      const hidden = collectHiddenKinds();
+      currentState.hiddenKinds = hidden;
+      persistState();
+
+      // Build the full filters payload (preserve existing filter values)
+      const filters = currentState.filters || {};
+      vscode.postMessage({
+        type: "filters/set",
+        filters: {
+          includePatterns: filters.includePatterns || ["**/*"],
+          excludePatterns: filters.excludePatterns || [],
+          maxDepth: filters.maxDepth || 10,
+          maxNodes: filters.maxNodes || 1000,
+          maxSymbolDepth: filters.maxSymbolDepth || 5,
+          hiddenKinds: hidden,
+        },
+      });
+
+      // Collapse all expanded file nodes so they re-expand with the new filter.
+      // The backend will skip hidden kinds on the next expand call.
+      const expandedFiles = currentNodes.filter(
+        (n) => n.kind === "file" && n.isExpanded
+      );
+      expandedFiles.forEach((n) => {
+        vscode.postMessage({ type: "node/collapse", nodeId: n.id });
       });
     });
 
@@ -600,6 +653,15 @@
       if (excludeEl) excludeEl.value = state.filters.excludePatterns.join("\n");
       if (maxDepthEl) maxDepthEl.value = state.filters.maxDepth;
       if (maxNodesEl) maxNodesEl.value = state.filters.maxNodes;
+
+      const maxSymbolDepthEl = document.getElementById("max-symbol-depth");
+      if (maxSymbolDepthEl) maxSymbolDepthEl.value = String(state.filters.maxSymbolDepth ?? 5);
+
+      // Hydrate kind visibility checkboxes from saved hiddenKinds
+      const hidden = Array.isArray(state.filters.hiddenKinds)
+        ? state.filters.hiddenKinds
+        : (currentState.hiddenKinds || []);
+      hydrateKindToggles(hidden);
     }
 
     // Update color rules
@@ -652,6 +714,32 @@
       }
     });
     return updated;
+  }
+
+  /**
+   * Collect the list of NodeKind strings that are currently unchecked.
+   */
+  function collectHiddenKinds() {
+    const hidden = [];
+    Object.entries(KIND_MAP).forEach(([checkboxId, kindValue]) => {
+      const el = document.getElementById(checkboxId);
+      if (el && !el.checked) {
+        hidden.push(kindValue);
+      }
+    });
+    return hidden;
+  }
+
+  /**
+   * Set checkbox states to match the provided hiddenKinds array.
+   */
+  function hydrateKindToggles(hiddenKinds) {
+    Object.entries(KIND_MAP).forEach(([checkboxId, kindValue]) => {
+      const el = document.getElementById(checkboxId);
+      if (el) {
+        el.checked = !hiddenKinds.includes(kindValue);
+      }
+    });
   }
 
   /**
